@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#080d16">
+<meta name="description" content="Aim Trainer 3D para practicar tracking, flick y precisión en móvil.">
+<link rel="manifest" href="manifest.webmanifest">
+<title>AIM ARENA 3D</title>
+<style>
+:root{--bg:#080d16;--panel:#101a29;--cyan:#39e6d0;--blue:#5b8cff;--muted:#9aabc2}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#f2f7ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;inset:0;pointer-events:none;padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom)}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding-top:10px}
+.pill,.panel{background:#0b1422dc;border:1px solid #263b55;border-radius:14px;backdrop-filter:blur(8px)}
+.pill{padding:8px 11px;font-size:12px;color:#cfe3fa}
+.pill b{color:var(--cyan);font-size:17px;display:block}
+.stats{display:flex;gap:7px}.center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center}
+#crosshair{position:absolute;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);opacity:.9}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#dffefa;box-shadow:0 0 7px var(--cyan)}
+#crosshair:before{width:2px;height:22px;left:10px}#crosshair:after{height:2px;width:22px;top:10px}
+#hitmark{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:28px;color:var(--cyan);opacity:0}
+#bottom{position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));left:12px;right:12px;display:flex;justify-content:space-between;align-items:end;pointer-events:none}
+.weapon{width:155px;height:95px;position:relative;filter:drop-shadow(0 7px 8px #0009)}
+.weapon:before{content:"";position:absolute;right:0;bottom:20px;width:130px;height:30px;background:linear-gradient(160deg,#53677b,#182638 55%,#0a111d);clip-path:polygon(0 25%,70% 0,100% 20%,94% 75%,25% 100%,10% 70%)}
+.weapon:after{content:"";position:absolute;right:27px;bottom:0;width:31px;height:46px;background:linear-gradient(90deg,#111c2b,#40536a,#101a28);clip-path:polygon(0 0,100% 0,82% 100%,22% 86%)}
+.weapon span{position:absolute;right:6px;bottom:48px;width:64px;height:8px;background:#7f9aab;border-radius:4px}
+.controls{pointer-events:auto;display:flex;gap:8px;align-items:center}
+button,select{border:1px solid #38516c;background:#101c2c;color:#eff7ff;border-radius:12px;padding:11px 13px;font-weight:650;font-size:13px}
+button.primary{background:linear-gradient(135deg,#1e9f9a,#2768c9);border:0}
+button:active{transform:scale(.97)}
+#menu{position:fixed;inset:0;background:linear-gradient(180deg,#07101deF,#07101df5);display:flex;align-items:center;justify-content:center;padding:18px;z-index:5}
+.card{width:min(440px,100%);max-height:92%;overflow:auto;background:#0e1929;border:1px solid #2a405c;border-radius:22px;padding:22px;box-shadow:0 20px 80px #0009}
+h1{margin:0;color:var(--cyan);font-size:29px;letter-spacing:1.5px} .sub{color:var(--muted);font-size:13px;margin:5px 0 18px}
+label{display:block;font-size:12px;color:#a9bdd4;margin:13px 0 6px}
+select{width:100%;padding:13px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.info{font-size:12px;line-height:1.55;color:#aebed0;margin:15px 0}
+#end{display:none;position:fixed;inset:0;background:#050a12d9;z-index:4;align-items:center;justify-content:center;padding:20px}
+#end .card{text-align:center}
+#toast{position:fixed;top:25%;left:50%;transform:translateX(-50%);font-weight:900;color:var(--cyan);text-shadow:0 2px 12px #000;font-size:23px;opacity:0;pointer-events:none}
+#lookHint{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);font-size:11px;color:#d5e5f5aa;pointer-events:none;white-space:nowrap}
+@media(min-width:700px){.weapon{transform:scale(1.25);transform-origin:bottom left}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud">
+ <div class="top">
+  <div class="pill">AIM ARENA <b>3D</b></div>
+  <div class="stats">
+   <div class="pill">TIEMPO <b id="time">60</b></div>
+   <div class="pill">PUNTOS <b id="score">0</b></div>
+   <div class="pill">PRECISIÓN <b id="acc">100%</b></div>
+  </div>
+ </div>
+ <div id="crosshair"></div><div id="hitmark">✦</div>
+ <div id="bottom"><div class="weapon"><span></span></div><div class="controls"><button id="reload">↻</button><button class="primary" id="pause">PAUSA</button></div></div>
+ <div id="lookHint">Desliza para apuntar · Toca DISPARAR para practicar</div>
+ <div id="toast">+100</div>
+</div>
+<div id="menu">
+ <div class="card">
+  <h1>AIM ARENA 3D</h1><div class="sub">Entrenador móvil inspirado en los aim trainers FPS</div>
+  <label>Modo de práctica</label>
+  <select id="mode"><option value="tracking">Tracking — sigue el objetivo</option><option value="flick">Flick — cambia rápido de objetivo</option><option value="micro">Micro ajuste — blancos pequeños</option><option value="reactive">Reactive — movimiento impredecible</option></select>
+  <div class="row">
+   <div><label>Duración</label><select id="duration"><option>30</option><option selected>60</option><option>120</option></select></div>
+   <div><label>Dificultad</label><select id="difficulty"><option value="1">Fácil</option><option value="1.35" selected>Media</option><option value="1.8">Difícil</option></select></div>
+  </div>
+  <label>Sensibilidad táctil</label><select id="sens"><option value=".7">Baja</option><option value="1" selected>Media</option><option value="1.35">Alta</option></select>
+  <p class="info">Arena 3D con objetivos flotantes, arma ficticia de entrenamiento, tracking, flick y puntuación. Es una práctica independiente: no modifica Blood Strike ni sus archivos.</p>
+  <button class="primary" id="start" style="width:100%;padding:15px">EMPEZAR ENTRENAMIENTO</button>
+ </div>
+</div>
+<div id="end"><div class="card"><h1>ENTRENAMIENTO TERMINADO</h1><p id="summary" class="info"></p><button class="primary" id="again" style="width:100%">VOLVER A ENTRENAR</button></div></div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W=0,H=0,dpr=1,targets=[],running=false,paused=false,mode='tracking',duration=60,left=60,score=0,shots=0,hits=0,sens=1,diff=1.35,last=0,elapsed=0,flash=0,drag=false,lastX=0,lastY=0,aimX=0,aimY=0,spawnClock=0;
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);aimX=W/2;aimY=H/2}
+addEventListener('resize',resize);resize();
+function spawn(){let z=3.3+Math.random()*4.8;let t={x:(Math.random()-.5)*5.4,y:(Math.random()-.5)*3.3,z,r:mode==='micro'?.12+Math.random()*.05:.2+Math.random()*.18,vx:(Math.random()-.5)*1.5*diff,vy:(Math.random()-.5)*1.1*diff,phase:Math.random()*7};targets.push(t)}
+function project(t){let f=Math.min(W,H)*.78;return{x:W/2+(t.x/(t.z+0.001))*f,y:H*.46-(t.y/(t.z+0.001))*f,r:t.r/(t.z)*f}}
+function start(){mode=$('mode').value;duration=left=+$('duration').value;diff=+$('difficulty').value;sens=+$('sens').value;score=shots=hits=elapsed=0;targets=[];for(let i=0;i<7;i++)spawn();$('score').textContent='0';$('time').textContent=left;$('acc').textContent='100%';$('menu').style.display='none';$('end').style.display='none';running=true;paused=false;$('pause').textContent='PAUSA';last=performance.now();requestAnimationFrame(loop)}
+function drawArena(dt){
+ ctx.clearRect(0,0,W,H);
+ let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#101e32');sky.addColorStop(.56,'#17283a');sky.addColorStop(1,'#070d17');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ // horizon glow
+ let glow=ctx.createRadialGradient(W/2,H*.47,5,W/2,H*.47,H*.55);glow.addColorStop(0,'#3c9eae22');glow.addColorStop(1,'#07101a00');ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+ // floor perspective grid
+ let horizon=H*.52;ctx.strokeStyle='#3d91a044';ctx.lineWidth=1;
+ for(let i=-12;i<=12;i++){ctx.beginPath();ctx.moveTo(W/2+i*18,horizon);ctx.lineTo(W/2+i*W*.12,H);ctx.stroke()}
+ for(let j=1;j<=12;j++){let y=horizon+(j/12)*(H-horizon);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ // side structures
+ for(let side of [-1,1]){ctx.fillStyle='#182c40';ctx.fillRect(side<0?0:W-18,H*.2,18,H*.52);ctx.fillStyle='#42c7c044';ctx.fillRect(side<0?15:W-19,H*.27,3,H*.3)}
+ // target bodies
+ targets.sort((a,b)=>b.z-a.z);
+ for(let t of targets){let p=project(t);if(p.r<2)continue;
+  let g=ctx.createRadialGradient(p.x-p.r*.25,p.y-p.r*.3,1,p.x,p.y,p.r*1.2);g.addColorStop(0,'#f6ffff');g.addColorStop(.22,'#6af7e2');g.addColorStop(.7,'#168eaa');g.addColorStop(1,'#092a45');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#c8fff8';ctx.lineWidth=Math.max(1,p.r*.07);ctx.stroke();
+  ctx.strokeStyle='#c5fff988';ctx.beginPath();ctx.arc(p.x,p.y,p.r*.68,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(p.x-p.r*.25,p.y-p.r*.25,p.r*.12,0,Math.PI*2);ctx.fill();
+ }
+ // stylized FPS sci-fi weapon at bottom center
+ ctx.save();ctx.translate(W/2,H+5);
+ ctx.fillStyle='#060b12';ctx.beginPath();ctx.moveTo(-72,-5);ctx.lineTo(-48,-85);ctx.lineTo(45,-85);ctx.lineTo(83,-9);ctx.closePath();ctx.fill();
+ let wg=ctx.createLinearGradient(-50,-90,60,-5);wg.addColorStop(0,'#8299aa');wg.addColorStop(.3,'#283e54');wg.addColorStop(1,'#0b1523');
+ ctx.fillStyle=wg;ctx.beginPath();ctx.moveTo(-57,-10);ctx.lineTo(-42,-83);ctx.lineTo(39,-92);ctx.lineTo(69,-12);ctx.lineTo(34,4);ctx.lineTo(-40,4);ctx.closePath();ctx.fill();
+ ctx.fillStyle='#111d2c';ctx.fillRect(-17,-108,34,35);ctx.fillStyle='#4cebd6';ctx.fillRect(-8,-101,16,5);
+ ctx.fillStyle='#516b80';ctx.fillRect(12,-68,49,10);ctx.fillStyle='#152638';ctx.fillRect(20,-63,35,3);
+ ctx.fillStyle='#0a111b';ctx.beginPath();ctx.moveTo(-23,-18);ctx.lineTo(23,-18);ctx.lineTo(13,40);ctx.lineTo(-10,40);ctx.closePath();ctx.fill();
+ ctx.restore();
+}
+function update(dt){elapsed+=dt;left=Math.max(0,duration-elapsed);$('time').textContent=Math.ceil(left);
+ let speed=mode==='tracking'?1.05:mode==='reactive'?1.8:mode==='flick'?.55:.8;
+ for(let t of targets){t.phase+=dt*speed;t.x+=t.vx*dt*speed;t.y+=t.vy*dt*speed;
+  if(mode==='tracking'){t.x+=Math.sin(t.phase*1.4)*dt*.65;t.y+=Math.cos(t.phase)*dt*.42}
+  if(mode==='reactive'&&Math.random()<dt*.8){t.vx=(Math.random()-.5)*2.5*diff;t.vy=(Math.random()-.5)*2*diff}
+  if(Math.abs(t.x)>3.6)t.vx*=-1;if(Math.abs(t.y)>2.2)t.vy*=-1;
+  t.z-=dt*(mode==='flick'?.05:.018);if(t.z<2.4)t.z=6+Math.random()*2;
+ }
+ if(mode==='flick'){spawnClock+=dt;if(spawnClock>1.15){spawnClock=0;if(targets.length<8)spawn()}}
+ if(targets.length<5)spawn();
+ $('acc').textContent=(shots?Math.round(hits/shots*100):100)+'%';
+ if(left<=0)finish();
+}
+function loop(now){if(!running||paused)return;let dt=Math.min((now-last)/1000,.04);last=now;update(dt);drawArena(dt);requestAnimationFrame(loop)}
+function shoot(x=aimX,y=aimY){if(!running||paused)return;shots++;let best=-1,bd=1e9;
+ for(let i=0;i<targets.length;i++){let p=project(targets[i]),d=Math.hypot(x-p.x,y-p.y);if(d<p.r*1.12&&d<bd){best=i;bd=d}}
+ if(best>=0){hits++;let t=targets.splice(best,1)[0];let pts=Math.round(100+Math.max(0,60-t.z*8));score+=pts;$('score').textContent=score;$('toast').textContent='+'+pts;$('toast').style.opacity=1;$('hitmark').style.opacity=1;flash=.12;setTimeout(()=>$('toast').style.opacity=0,280);setTimeout(()=>$('hitmark').style.opacity=0,130);if(mode==='flick')spawn();else spawn()}
+ else{$('toast').textContent='FALLO';$('toast').style.color='#ff9b82';$('toast').style.opacity=1;setTimeout(()=>{$('toast').style.opacity=0;$('toast').style.color='var(--cyan)'},250)}
+}
+function finish(){running=false;$('end').style.display='flex';$('summary').textContent=`Puntuación: ${score} · Precisión: ${shots?Math.round(hits/shots*100):0}% · Aciertos: ${hits}/${shots}. ¡Buen entrenamiento!`}
+function togglePause(){if(!running)return;paused=!paused;$('pause').textContent=paused?'SEGUIR':'PAUSA';if(!paused){last=performance.now();requestAnimationFrame(loop)}}
+$('start').onclick=start;$('again').onclick=()=>{$('end').style.display='none';$('menu').style.display='flex'};$('pause').onclick=togglePause;$('reload').onclick=()=>{if(running){targets=[];for(let i=0;i<7;i++)spawn()}};
+canvas.addEventListener('pointerdown',e=>{if(!running)return;drag=true;lastX=e.clientX;lastY=e.clientY;shoot(e.clientX,e.clientY)});
+canvas.addEventListener('pointermove',e=>{if(!running||!drag)return;let dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;aimX=Math.max(0,Math.min(W,aimX+dx*sens));aimY=Math.max(0,Math.min(H,aimY+dy*sens));$('crosshair').style.left=aimX+'px';$('crosshair').style.top=aimY+'px'});
+addEventListener('pointerup',()=>drag=false);
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused)togglePause()});
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+drawArena(0);
+})();
+</script>
+</body></html>
